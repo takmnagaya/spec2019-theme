@@ -20,6 +20,14 @@ provider:
         - "dynamodb:*"
       Resource:
         - "*"
+    - Effect: "Allow"
+      Action:
+        - "sqs:SendMessage"
+        - "sqs:GetQueueUrl"
+        - "sqs:ListQueues"
+      Resource:
+        - "*"
+
   tracing:
     apiGateway: true
     lambda: true
@@ -31,24 +39,56 @@ functions:
       - http:
           path: users
           method: post
+  CreateUserReceiver:
+    handler: handler.user_create_receiver
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - UserCreate
+              - Arn
   WalletCharge:
     handler: handler.wallet_charge
     events:
       - http:
           path: wallet/charge
           method: post
+  WalletChargeReceiver:
+    handler: handler.wallet_charge_receiver
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - WalletCharge
+              - Arn
   WalletUse:
     handler: handler.wallet_use
     events:
       - http:
           path: wallet/use
           method: post
+  WalletUseReceiver:
+    handler: handler.wallet_use_receiver
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - WalletUse
+              - Arn
   WalletTransfer:
     handler: handler.wallet_transfer
     events:
       - http:
           path: wallet/transfer
           method: post
+  WalletTransferReceiver:
+    handler: handler.wallet_transfer_receiver
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - WalletTransfer
+              - Arn
   GetUserSummary:
     handler: handler.get_user_summary
     events:
@@ -97,3 +137,19 @@ resources:
             KeyType: HASH
           - AttributeName: transactionId
             KeyType: RANGE
+    CreateUserQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: "UserCreate"
+    WalletChargeQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: "WalletCharge"
+    WalletUseQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: "WalletUse"
+    WalletTransferQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: "WalletTransfer"

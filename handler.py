@@ -9,140 +9,183 @@ import requests
 
 
 def user_create(event, context):
-    user_wallet_table = boto3.resource('dynamodb').Table(os.environ['USER_WALLET_TABLE'])
-    body = json.loads(event['body'])
-    user_wallet_table.put_item(
-        Item={
-            'userId': body['id'],
-            'userName': body['name'],
-            'walletId': str(uuid.uuid4()),
-            'amount': 0,
-        }
-    )
+    sqs = boto3.resource('sqs')
+    queue = sqs.get_queue_by_name(QueueName='UserCreate')
+    queue.send_message(MessageBody=event['body'])
     return {
         'statusCode': 200,
         'body': json.dumps({'result': 'ok'})
     }
 
 
+def user_create_receiver(event, context):
+    user_wallet_table = boto3.resource('dynamodb').Table(os.environ['USER_WALLET_TABLE'])
+
+    for record in event['Records']:
+        body = json.loads(record['body'])
+        user_wallet_table.put_item(
+            Item={
+                'userId': body['id'],
+                'userName': body['name'],
+                'walletId': str(uuid.uuid4()),
+                'amount': 0,
+            }
+        )
+    return {
+        'statusCode': 200,
+    }
+
+
 def wallet_charge(event, context):
+    sqs = boto3.resource('sqs')
+    queue = sqs.get_queue_by_name(QueueName='WalletCharge')
+    queue.send_message(MessageBody=event['body'])
+    return {
+            'statusCode': 202,
+            'body': json.dumps({'result': 'Accepted. Please wait for the notification.'})
+    }
+
+
+def wallet_charge_receiver(event, context):
     user_wallet_table = boto3.resource('dynamodb').Table(os.environ['USER_WALLET_TABLE'])
     history_table = boto3.resource('dynamodb').Table(os.environ['PAYMENT_HISTORY_TABLE'])
-    body = json.loads(event['body'])
-    user_wallet = user_wallet_table.update_item(
-            ExpressionAttributeNames={
-                '#A': 'amount',
-            },
-            ExpressionAttributeValues={
-                ':a': body['chargeAmount'],
-            },
-            Key={
-                'userId': body['userId'],
-            },
-            ReturnValues='ALL_NEW',
-            UpdateExpression='SET #A = #A + :a',
-        )
-    print(user_wallet)
-    history_table.put_item(
-        Item={
-            'walletId': user_wallet['Attributes']['walletId'],
-            'transactionId': body['transactionId'],
-            'chargeAmount': body['chargeAmount'],
-            'locationId': body['locationId'],
-            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-    )
-    requests.post(os.environ['NOTIFICATION_ENDPOINT'], json={
-        'transactionId': body['transactionId'],
-        'userId': body['userId'],
-        'chargeAmount': body['chargeAmount'],
-        'totalAmount': int(user_wallet['Attributes']['amount'])
-    })
 
-    return {
-        'statusCode': 202,
-        'body': json.dumps({'result': 'Accepted. Please wait for the notification.'})
-    }
+    for record in event['Records']:
+        body = json.loads(event['body'])
+        user_wallet = user_wallet_table.update_item(
+                ExpressionAttributeNames={
+                    '#A': 'amount',
+                },
+                ExpressionAttributeValues={
+                    ':a': body['chargeAmount'],
+                },
+                Key={
+                    'userId': body['userId'],
+                },
+                ReturnValues='ALL_NEW',
+                UpdateExpression='SET #A = #A + :a',
+            )
+        print(user_wallet)
+        history_table.put_item(
+            Item={
+                'walletId': user_wallet['Attributes']['walletId'],
+                'transactionId': body['transactionId'],
+                'chargeAmount': body['chargeAmount'],
+                'locationId': body['locationId'],
+                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+        )
+        requests.post(os.environ['NOTIFICATION_ENDPOINT'], json={
+            'transactionId': body['transactionId'],
+            'userId': body['userId'],
+            'chargeAmount': body['chargeAmount'],
+            'totalAmount': int(user_wallet['Attributes']['amount'])
+        })
+
+        return {
+            'statusCode': 202,
+            'body': json.dumps({'result': 'Accepted. Please wait for the notification.'})
+        }
 
 
 def wallet_use(event, context):
+    sqs = boto3.resource('sqs')
+    queue = sqs.get_queue_by_name(QueueName='WalletUse')
+    queue.send_message(MessageBody=event['body'])
+    return {
+            'statusCode': 202,
+            'body': json.dumps({'result': 'Accepted. Please wait for the notification.'})
+    }
+
+def wallet_use_receiver(event, context):
     user_wallet_table = boto3.resource('dynamodb').Table(os.environ['USER_WALLET_TABLE'])
     history_table = boto3.resource('dynamodb').Table(os.environ['PAYMENT_HISTORY_TABLE'])
-    body = json.loads(event['body'])
 
-    try:
-        usage_result = user_wallet_table.update_item(
-            ExpressionAttributeNames={
-                '#A': 'amount',
-            },
-            ExpressionAttributeValues={
-                ':a': body['useAmount'],
-            },
-            Key={
-                'userId': body['userId'],
-            },
-            ReturnValues='ALL_NEW',
-            UpdateExpression='SET #A = #A - :a',
-            ConditionExpression=Attr('amount').gte(0),
+    for record in event['Records']:
+        body = json.loads(event['body'])
+        try:
+            usage_result = user_wallet_table.update_item(
+                ExpressionAttributeNames={
+                    '#A': 'amount',
+                },
+                ExpressionAttributeValues={
+                    ':a': body['useAmount'],
+                },
+                Key={
+                    'userId': body['userId'],
+                },
+                ReturnValues='ALL_NEW',
+                UpdateExpression='SET #A = #A - :a',
+                ConditionExpression=Attr('amount').gte(0),
+            )
+            # ConditionalCheckFailed
+        except Exception as e:
+            print(e)
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'errorMessage': 'There was not enough money.'})
+            }
+
+        history_table.put_item(
+            Item={
+                'walletId': usage_result['Attributes']['walletId'],
+                'transactionId': body['transactionId'],
+                'useAmount': body['useAmount'],
+                'locationId': body['locationId'],
+                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
         )
-        # ConditionalCheckFailed
-    except Exception as e:
-        print(e)
-        return {
-            'statusCode': 400,
-            'body': json.dumps({'errorMessage': 'There was not enough money.'})
-        }
-
-    history_table.put_item(
-        Item={
-            'walletId': usage_result['Attributes']['walletId'],
+        # TODO: SQS
+        requests.post(os.environ['NOTIFICATION_ENDPOINT'], json={
             'transactionId': body['transactionId'],
+            'userId': body['userId'],
             'useAmount': body['useAmount'],
-            'locationId': body['locationId'],
-            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-    )
-    # TODO: SQS
-    requests.post(os.environ['NOTIFICATION_ENDPOINT'], json={
-        'transactionId': body['transactionId'],
-        'userId': body['userId'],
-        'useAmount': body['useAmount'],
-        'totalAmount': int(usage_result['Attributes']['amount'])
-    })
+            'totalAmount': int(usage_result['Attributes']['amount'])
+        })
 
-    return {
-        'statusCode': 202,
-        'body': json.dumps({'result': 'Accepted. Please wait for the notification.'})
-    }
+        return {
+            'statusCode': 202,
+            'body': json.dumps({'result': 'Accepted. Please wait for the notification.'})
+        }
 
 
 def wallet_transfer(event, context):
+    sqs = boto3.resource('sqs')
+    queue = sqs.get_queue_by_name(QueueName='WalletTransfer')
+    queue.send_message(MessageBody=event['body'])
+    return {
+            'statusCode': 202,
+            'body': json.dumps({'result': 'Accepted. Please wait for the notification.'})
+    }
+
+def wallet_transfer_receiver(event, context):
     user_wallet_table = boto3.resource('dynamodb').Table(os.environ['USER_WALLET_TABLE'])
     history_table = boto3.resource('dynamodb').Table(os.environ['PAYMENT_HISTORY_TABLE'])
-    body = json.loads(event['body'])
 
-    try:
-        from_wallet = user_wallet_table.update_item(
-            ExpressionAttributeNames={
-                '#A': 'amount',
-            },
-            ExpressionAttributeValues={
-                ':a': body['transferAmount'],
-            },
-            Key={
-                'userId': body['fromUserId'],
-            },
-            ReturnValues='ALL_NEW',
-            UpdateExpression='SET #A = #A - :a',
-            ConditionExpression=Attr('amount').gte(0),
-        )
-        # ConditionalCheckFailed
-    except Exception as e:
-        print(e)
-        return {
-            'statusCode': 400,
-            'body': json.dumps({'errorMessage': 'There was not enough money.'})
-        }
+    for record in event['Records']:
+        body = json.loads(event['body'])
+        try:
+            from_wallet = user_wallet_table.update_item(
+                ExpressionAttributeNames={
+                    '#A': 'amount',
+                },
+                ExpressionAttributeValues={
+                    ':a': body['transferAmount'],
+                },
+                Key={
+                    'userId': body['fromUserId'],
+                },
+                ReturnValues='ALL_NEW',
+                UpdateExpression='SET #A = #A - :a',
+                ConditionExpression=Attr('amount').gte(0),
+            )
+            # ConditionalCheckFailed
+        except Exception as e:
+            print(e)
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'errorMessage': 'There was not enough money.'})
+            }
 
     to_wallet = user_wallet_table.update_item(
         ExpressionAttributeNames={
