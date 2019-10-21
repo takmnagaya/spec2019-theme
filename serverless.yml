@@ -137,6 +137,10 @@ resources:
             KeyType: HASH
           - AttributeName: transactionId
             KeyType: RANGE
+    CreateUserQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: "UserCreate"
     WalletChargeQueue:
       Type: "AWS::SQS::Queue"
       Properties:
