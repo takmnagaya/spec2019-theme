@@ -34,7 +34,7 @@ def wallet_charge(event, context):
                 '#A': 'amount',
             },
             ExpressionAttributeValues={
-                {':a': body['chargeAmount']},
+                ':a': body['chargeAmount'],
             },
             Key={
                 'userId': {
@@ -77,9 +77,7 @@ def wallet_use(event, context):
                 '#A': 'amount',
             },
             ExpressionAttributeValues={
-                ':a': {
-                    'N': body['useAmount'],
-                },
+                ':a': body['useAmount'],
             },
             Key={
                 'userId': {
@@ -132,9 +130,7 @@ def wallet_transfer(event, context):
                 '#A': 'amount',
             },
             ExpressionAttributeValues={
-                ':a': {
-                    'N': body['transferAmount'],
-                },
+                ':a': body['transferAmount'],
             },
             Key={
                 'userId': {
@@ -158,9 +154,7 @@ def wallet_transfer(event, context):
             '#A': 'amount',
         },
         ExpressionAttributeValues={
-            ':a': {
-                'N': body['transferAmount'],
-            },
+            ':a': body['transferAmount'],
         },
         Key={
             'userId': {
