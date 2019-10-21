@@ -45,7 +45,7 @@ functions:
       - sqs:
           arn:
             Fn::GetAtt:
-              - UserCreate
+              - CreateUserQueue
               - Arn
   WalletCharge:
     handler: handler.wallet_charge
@@ -59,7 +59,7 @@ functions:
       - sqs:
           arn:
             Fn::GetAtt:
-              - WalletCharge
+              - WalletChargeQueue
               - Arn
   WalletUse:
     handler: handler.wallet_use
@@ -73,7 +73,7 @@ functions:
       - sqs:
           arn:
             Fn::GetAtt:
-              - WalletUse
+              - WalletUseQueue
               - Arn
   WalletTransfer:
     handler: handler.wallet_transfer
@@ -87,7 +87,7 @@ functions:
       - sqs:
           arn:
             Fn::GetAtt:
-              - WalletTransfer
+              - WalletTransferQueue
               - Arn
   GetUserSummary:
     handler: handler.get_user_summary
