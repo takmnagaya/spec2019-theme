@@ -42,6 +42,7 @@ def wallet_charge(event, context):
             ReturnValues='ALL_NEW',
             UpdateExpression='SET #A = #A + :a',
         )
+    print(user_wallet)
     history_table.put_item(
         Item={
             'walletId': user_wallet['Item']['walletId'],
