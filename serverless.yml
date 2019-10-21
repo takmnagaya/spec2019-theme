@@ -39,6 +39,14 @@ functions:
       - http:
           path: users
           method: post
+  CreateUserReceiver:
+    handler: handler.user_create_receiver
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - UserCreate
+              - Arn
   WalletCharge:
     handler: handler.wallet_charge
     events:
@@ -51,7 +59,7 @@ functions:
       - sqs:
           arn:
             Fn::GetAtt:
-              - WalletChargeQueue
+              - WalletCharge
               - Arn
   WalletUse:
     handler: handler.wallet_use
@@ -65,7 +73,7 @@ functions:
       - sqs:
           arn:
             Fn::GetAtt:
-              - WalletUseQueue
+              - WalletUse
               - Arn
   WalletTransfer:
     handler: handler.wallet_transfer
@@ -79,7 +87,7 @@ functions:
       - sqs:
           arn:
             Fn::GetAtt:
-              - WalletTransferQueue
+              - WalletTransfer
               - Arn
   GetUserSummary:
     handler: handler.get_user_summary
