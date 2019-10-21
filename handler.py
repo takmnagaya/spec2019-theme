@@ -269,7 +269,7 @@ def get_user_summary(event, context):
     #     }
     # ).get('Items').pop()
     payment_history = history_table.query(
-        KeyConditionExpression=Key('userId').eq(params['userId'])
+        KeyConditionExpression=Key('walletId').eq(user_wallet['Item']['walletId'])
     )
     # payment_history = history_table.scan(
     #     ScanFilter={
@@ -321,11 +321,11 @@ def get_payment_history(event, context):
     #         }
     #     }
     # ).get('Items').pop()
-    # user_wallet = user_wallet_table.get_item(
-    #     Key={'userId': params['userId']}
-    # )
+    user_wallet = user_wallet_table.get_item(
+        Key={'userId': params['userId']}
+    )
     payment_history_result = history_table.query(
-        KeyConditionExpression=Key('userId').eq(params['userId'])
+        KeyConditionExpression=Key('walletId').eq(user_wallet['Item']['walletId'])
     )
     # payment_history_result = history_table.scan(
     #     ScanFilter={
