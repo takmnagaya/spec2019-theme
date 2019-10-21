@@ -20,6 +20,9 @@ provider:
         - "dynamodb:*"
       Resource:
         - "*"
+  tracing:
+    apiGateway: true
+    lambda: true
 
 functions:
   CreateUser:
