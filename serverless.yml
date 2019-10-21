@@ -67,7 +67,7 @@ resources:
       Properties:
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
-          - AttributeName: u_id
+          - AttributeName: userId
             AttributeType: S
         KeySchema:
           - AttributeName: id
