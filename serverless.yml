@@ -69,6 +69,8 @@ resources:
         AttributeDefinitions:
           - AttributeName: userId
             AttributeType: S
+          - AttributeName: walletId
+            AttributeType: S
         KeySchema:
           - AttributeName: userId
             KeyType: HASH
