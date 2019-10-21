@@ -37,9 +37,7 @@ def wallet_charge(event, context):
                 ':a': body['chargeAmount'],
             },
             Key={
-                'userId': {
-                    'S': body['userId'],
-                },
+                'userId': body['userId'],
             },
             ReturnValues='ALL_NEW',
             UpdateExpression='SET #A = #A + :a',
@@ -80,9 +78,7 @@ def wallet_use(event, context):
                 ':a': body['useAmount'],
             },
             Key={
-                'userId': {
-                    'S': body['userId'],
-                },
+                'userId': body['userId'],
             },
             ReturnValues='ALL_NEW',
             UpdateExpression='SET #A = #A - :a',
@@ -133,9 +129,7 @@ def wallet_transfer(event, context):
                 ':a': body['transferAmount'],
             },
             Key={
-                'userId': {
-                    'S': body['fromUserId'],
-                },
+                'userId': body['fromUserId'],
             },
             ReturnValues='ALL_NEW',
             UpdateExpression='SET #A = #A - :a',
@@ -157,9 +151,7 @@ def wallet_transfer(event, context):
             ':a': body['transferAmount'],
         },
         Key={
-            'userId': {
-                'S': body['toUserId'],
-            },
+            'userId': body['toUserId'],
         },
         ReturnValues='ALL_NEW',
         UpdateExpression='SET #A = #A + :a',
