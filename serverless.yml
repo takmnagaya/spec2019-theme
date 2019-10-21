@@ -39,14 +39,6 @@ functions:
       - http:
           path: users
           method: post
-  CreateUserReceiver:
-    handler: handler.user_create_receiver
-    events:
-      - sqs:
-          arn:
-            Fn::GetAtt:
-              - CreateUserQueue
-              - Arn
   WalletCharge:
     handler: handler.wallet_charge
     events:
@@ -137,10 +129,6 @@ resources:
             KeyType: HASH
           - AttributeName: transactionId
             KeyType: RANGE
-    CreateUserQueue:
-      Type: "AWS::SQS::Queue"
-      Properties:
-        QueueName: "UserCreate"
     WalletChargeQueue:
       Type: "AWS::SQS::Queue"
       Properties:
