@@ -179,8 +179,8 @@ def wallet_transfer(event, context):
         Key={'userId': body['toUserId']}
     )
 
-    from_total_amount = from_wallet['amount'] - body['transferAmount']
-    to_total_amount = from_wallet['amount'] + body['transferAmount']
+    from_total_amount = from_wallet['Item']['amount'] - body['transferAmount']
+    to_total_amount = from_wallet['Item']['amount'] + body['transferAmount']
     if from_total_amount < 0:
         return {
             'statusCode': 400,
@@ -189,7 +189,7 @@ def wallet_transfer(event, context):
 
     user_wallet_table.update_item(
         Key={
-            'walletId': from_wallet['walletId']
+            'walletId': from_wallet['Item']['walletId']
         },
         AttributeUpdates={
             'amount': {
@@ -200,7 +200,7 @@ def wallet_transfer(event, context):
     )
     user_wallet_table.update_item(
         Key={
-            'walletId': to_wallet['walletId']
+            'walletId': to_wallet['Item']['walletId']
         },
         AttributeUpdates={
             'amount': {
@@ -211,7 +211,7 @@ def wallet_transfer(event, context):
     )
     history_table.put_item(
         Item={
-            'walletId': from_wallet['walletId'],
+            'walletId': from_wallet['Item']['walletId'],
             'transactionId': body['transactionId'],
             'useAmount': body['transferAmount'],
             'locationId': body['locationId'],
@@ -220,7 +220,7 @@ def wallet_transfer(event, context):
     )
     history_table.put_item(
         Item={
-            'walletId': from_wallet['walletId'],
+            'walletId': from_wallet['Item']['walletId'],
             'transactionId': body['transactionId'],
             'chargeAmount': body['transferAmount'],
             'locationId': body['locationId'],
