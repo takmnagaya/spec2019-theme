@@ -40,9 +40,9 @@ def wallet_charge(event, context):
     # wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
     history_table = boto3.resource('dynamodb').Table(os.environ['PAYMENT_HISTORY_TABLE'])
     body = json.loads(event['body'])
-    user_wallet = user_wallet_table.get_item(
-        Key={'userId': body['userId']}
-    )
+    # user_wallet = user_wallet_table.get_item(
+    #     Key={'userId': body['userId']}
+    # )
     # result = wallet_table.scan(
     #     ScanFilter={
     #         'userId': {
@@ -54,18 +54,36 @@ def wallet_charge(event, context):
     #     }
     # )
     # user_wallet = result['Items'].pop()
-    total_amount = user_wallet['Item']['amount'] + body['chargeAmount']
-    user_wallet_table.update_item(
-        Key={
-            'userId': user_wallet['Item']['walletId']
-        },
-        AttributeUpdates={
-            'amount': {
-                'Value': total_amount,
-                'Action': 'PUT'
-            }
-        }
-    )
+    user_wallet = user_wallet_table.update_item(
+            ExpressionAttributeNames={
+                '#A': 'amount',
+            },
+            ExpressionAttributeValues={
+                ':a': {
+                    'N': body['chargeAmount'],
+                },
+            },
+            Key={
+                'userId': {
+                    'S': body['userId'],
+                },
+            },
+            ReturnValues='ALL_NEW',
+            # TableName=user_wallet_table,
+            UpdateExpression='SET #A = #A + :a',
+        )
+    # total_amount = user_wallet['Item']['amount'] + body['chargeAmount']
+    # user_wallet_table.update_item(
+    #     Key={
+    #         'userId': user_wallet['Item']['walletId']
+    #     },
+    #     AttributeUpdates={
+    #         'amount': {
+    #             'Value': total_amount,
+    #             'Action': 'PUT'
+    #         }
+    #     }
+    # )
     history_table.put_item(
         Item={
             'walletId': user_wallet['Item']['walletId'],
@@ -79,7 +97,7 @@ def wallet_charge(event, context):
         'transactionId': body['transactionId'],
         'userId': body['userId'],
         'chargeAmount': body['chargeAmount'],
-        'totalAmount': int(total_amount)
+        'totalAmount': int(user_wallet['Item']['amount'])
     })
 
     return {
@@ -204,8 +222,6 @@ def wallet_transfer(event, context):
     #         }
     #     }
     # ).get('Items').pop()
-
-
 
     try:
         from_wallet = user_wallet_table.update_item(
