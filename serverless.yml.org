@@ -6,8 +6,10 @@ provider:
   timeout: 30
   environment:
     TZ: Asia/Tokyo
-    USER_WALLET_TABLE:
-      Ref: UserWalletTable
+    USER_TABLE:
+      Ref: UserTable
+    WALLET_TABLE:
+      Ref: WalletTable
     PAYMENT_HISTORY_TABLE:
       Ref: PaymentHistoryTable
     NOTIFICATION_ENDPOINT: "https://dkxmaha7zk.execute-api.us-west-2.amazonaws.com/prod/notification"
@@ -67,7 +69,17 @@ resources:
       Properties:
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
-          - AttributeName: u_id
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+    WalletTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
             AttributeType: S
         KeySchema:
           - AttributeName: id
