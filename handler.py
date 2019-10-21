@@ -95,7 +95,7 @@ def wallet_use(event, context):
 
     history_table.put_item(
         Item={
-            'walletId': usage_result['Item']['walletId'],
+            'walletId': usage_result['Attributes']['walletId'],
             'transactionId': body['transactionId'],
             'useAmount': body['useAmount'],
             'locationId': body['locationId'],
@@ -107,7 +107,7 @@ def wallet_use(event, context):
         'transactionId': body['transactionId'],
         'userId': body['userId'],
         'useAmount': body['useAmount'],
-        'totalAmount': int(usage_result['Item']['amount'])
+        'totalAmount': int(usage_result['Attributes']['amount'])
     })
 
     return {
@@ -160,7 +160,7 @@ def wallet_transfer(event, context):
 
     history_table.put_item(
         Item={
-            'walletId': from_wallet['Item']['walletId'],
+            'walletId': from_wallet['Attributes']['walletId'],
             'transactionId': body['transactionId'],
             'useAmount': body['transferAmount'],
             'locationId': body['locationId'],
@@ -169,7 +169,7 @@ def wallet_transfer(event, context):
     )
     history_table.put_item(
         Item={
-            'walletId': from_wallet['Item']['walletId'],
+            'walletId': from_wallet['Attributes']['walletId'],
             'transactionId': body['transactionId'],
             'chargeAmount': body['transferAmount'],
             'locationId': body['locationId'],
@@ -180,14 +180,14 @@ def wallet_transfer(event, context):
         'transactionId': body['transactionId'],
         'userId': body['fromUserId'],
         'useAmount': body['transferAmount'],
-        'totalAmount': int(from_wallet['Item']['amount']),
+        'totalAmount': int(from_wallet['Attributes']['amount']),
         'transferTo': body['toUserId']
     })
     requests.post(os.environ['NOTIFICATION_ENDPOINT'], json={
         'transactionId': body['transactionId'],
         'userId': body['toUserId'],
         'chargeAmount': body['transferAmount'],
-        'totalAmount': int(to_wallet['Item']['amount']),
+        'totalAmount': int(to_wallet['Attributes']['amount']),
         'transferFrom': body['fromUserId']
     })
 
