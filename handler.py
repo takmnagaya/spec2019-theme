@@ -200,7 +200,8 @@ def wallet_transfer(event, context):
             ConditionExpression=Attr('amount').ge(0),
         )
         # ConditionalCheckFailed
-    except Exception:
+    except Exception as e:
+        print(e)
         return {
             'statusCode': 400,
             'body': json.dumps({'errorMessage': 'There was not enough money.'})
