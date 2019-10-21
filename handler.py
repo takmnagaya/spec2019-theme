@@ -9,30 +9,20 @@ import requests
 
 
 def user_create(event, context):
-    sqs = boto3.resource('sqs')
-    queue = sqs.get_queue_by_name(QueueName='UserCreate')
-    queue.send_message(MessageBody=event['body'])
+    user_wallet_table = boto3.resource('dynamodb').Table(os.environ['USER_WALLET_TABLE'])
+    body = json.loads(event['body'])
+    user_wallet_table.put_item(
+        Item={
+            'userId': body['id'],
+            'userName': body['name'],
+            'walletId': str(uuid.uuid4()),
+            'amount': 0,
+        }
+    )
+
     return {
         'statusCode': 200,
         'body': json.dumps({'result': 'ok'})
-    }
-
-
-def user_create_receiver(event, context):
-    user_wallet_table = boto3.resource('dynamodb').Table(os.environ['USER_WALLET_TABLE'])
-
-    for record in event['Records']:
-        body = json.loads(record['body'])
-        user_wallet_table.put_item(
-            Item={
-                'userId': body['id'],
-                'userName': body['name'],
-                'walletId': str(uuid.uuid4()),
-                'amount': 0,
-            }
-        )
-    return {
-        'statusCode': 200,
     }
 
 
