@@ -4,6 +4,8 @@ provider:
   runtime: python3.7
   region: us-west-2
   timeout: 30
+  logs:
+    restApi: true
   environment:
     TZ: Asia/Tokyo
     USER_WALLET_TABLE:
