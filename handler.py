@@ -45,7 +45,7 @@ def wallet_charge(event, context):
     print(user_wallet)
     history_table.put_item(
         Item={
-            'walletId': user_wallet['Item']['walletId'],
+            'walletId': user_wallet['Attributes']['walletId'],
             'transactionId': body['transactionId'],
             'chargeAmount': body['chargeAmount'],
             'locationId': body['locationId'],
@@ -56,7 +56,7 @@ def wallet_charge(event, context):
         'transactionId': body['transactionId'],
         'userId': body['userId'],
         'chargeAmount': body['chargeAmount'],
-        'totalAmount': int(user_wallet['Item']['amount'])
+        'totalAmount': int(user_wallet['Attributes']['amount'])
     })
 
     return {
