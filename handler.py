@@ -53,11 +53,11 @@ def wallet_charge(event, context):
     #     }
     # )
     # user_wallet = result['Items'].pop()
-    total_amount = user_wallet['amount'] + body['chargeAmount']
+    total_amount = user_wallet['Item']['amount'] + body['chargeAmount']
     user_wallet_table.update_item(
         IndexName='walletIndex',
         Key={
-            'walletId': user_wallet['walletId']
+            'walletId': user_wallet['Item']['walletId']
         },
         AttributeUpdates={
             'amount': {
@@ -68,7 +68,7 @@ def wallet_charge(event, context):
     )
     history_table.put_item(
         Item={
-            'walletId': user_wallet['walletId'],
+            'walletId': user_wallet['Item']['walletId'],
             'transactionId': body['transactionId'],
             'chargeAmount': body['chargeAmount'],
             'locationId': body['locationId'],
@@ -107,7 +107,7 @@ def wallet_use(event, context):
     #     }
     # )
     # user_wallet = result['Items'].pop()
-    total_amount = user_wallet['amount'] - body['useAmount']
+    total_amount = user_wallet['Item']['amount'] - body['useAmount']
     if total_amount < 0:
         return {
             'statusCode': 400,
@@ -117,7 +117,7 @@ def wallet_use(event, context):
     user_wallet_table.update_item(
         IndexName='walletIndex',
         Key={
-            'walletId': user_wallet['walletId']
+            'walletId': user_wallet['Item']['walletId']
         },
         AttributeUpdates={
             'amount': {
@@ -128,7 +128,7 @@ def wallet_use(event, context):
     )
     history_table.put_item(
         Item={
-            'walletId': user_wallet['walletId'],
+            'walletId': user_wallet['Item']['walletId'],
             'transactionId': body['transactionId'],
             'useAmount': body['useAmount'],
             'locationId': body['locationId'],
@@ -181,8 +181,8 @@ def wallet_transfer(event, context):
         Key={'userId': body['toUserId']}
     )
 
-    from_total_amount = from_wallet['amount'] - body['transferAmount']
-    to_total_amount = from_wallet['amount'] + body['transferAmount']
+    from_total_amount = from_wallet['Item']['amount'] - body['transferAmount']
+    to_total_amount = from_wallet['Item']['amount'] + body['transferAmount']
     if from_total_amount < 0:
         return {
             'statusCode': 400,
@@ -192,7 +192,7 @@ def wallet_transfer(event, context):
     user_wallet_table.update_item(
         IndexName='walletIndex',
         Key={
-            'walletId': from_wallet['walletId']
+            'walletId': from_wallet['Item']['walletId']
         },
         AttributeUpdates={
             'amount': {
@@ -204,7 +204,7 @@ def wallet_transfer(event, context):
     user_wallet_table.update_item(
         IndexName='walletIndex',
         Key={
-            'walletId': to_wallet['walletId']
+            'walletId': to_wallet['Item']['walletId']
         },
         AttributeUpdates={
             'amount': {
@@ -215,7 +215,7 @@ def wallet_transfer(event, context):
     )
     history_table.put_item(
         Item={
-            'walletId': from_wallet['walletId'],
+            'walletId': from_wallet['Item']['walletId'],
             'transactionId': body['transactionId'],
             'useAmount': body['transferAmount'],
             'locationId': body['locationId'],
@@ -224,7 +224,7 @@ def wallet_transfer(event, context):
     )
     history_table.put_item(
         Item={
-            'walletId': from_wallet['walletId'],
+            'walletId': from_wallet['Item']['walletId'],
             'transactionId': body['transactionId'],
             'chargeAmount': body['transferAmount'],
             'locationId': body['locationId'],
@@ -275,7 +275,7 @@ def get_user_summary(event, context):
         ScanFilter={
             'walletId': {
                 'AttributeValueList': [
-                    user_wallet['walletId']
+                    user_wallet['Item']['walletId']
                 ],
                 'ComparisonOperator': 'EQ'
             }
@@ -297,8 +297,8 @@ def get_user_summary(event, context):
         'statusCode': 200,
         'body': json.dumps({
             # 'userName': user['Item']['name'],
-            'userName': user_wallet['userName'],
-            'currentAmount': int(user_wallet['amount']),
+            'userName': user_wallet['Item']['userName'],
+            'currentAmount': int(user_wallet['Item']['amount']),
             'totalChargeAmount': int(sum_charge),
             'totalUseAmount': int(sum_payment),
             'timesPerLocation': times_per_location
@@ -328,7 +328,7 @@ def get_payment_history(event, context):
         ScanFilter={
             'walletId': {
                 'AttributeValueList': [
-                    user_wallet['walletId']
+                    user_wallet['Item']['walletId']
                 ],
                 'ComparisonOperator': 'EQ'
             }
