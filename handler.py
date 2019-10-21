@@ -93,9 +93,9 @@ def wallet_use(event, context):
     # wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
     history_table = boto3.resource('dynamodb').Table(os.environ['PAYMENT_HISTORY_TABLE'])
     body = json.loads(event['body'])
-    user_wallet = user_wallet_table.get_item(
-        Key={'userId': body['userId']}
-    )
+    # user_wallet = user_wallet_table.get_item(
+    #     Key={'userId': body['userId']}
+    # )
     # result = wallet_table.scan(
     #     ScanFilter={
     #         'userId': {
@@ -107,27 +107,55 @@ def wallet_use(event, context):
     #     }
     # )
     # user_wallet = result['Items'].pop()
-    total_amount = user_wallet['Item']['amount'] - body['useAmount']
-    if total_amount < 0:
+    try:
+        usage_result = user_wallet_table.update_item(
+            ExpressionAttributeNames={
+                '#A': 'amount',
+            },
+            ExpressionAttributeValues={
+                ':a': {
+                    'N': body['useAmount'],
+                },
+            },
+            Key={
+                'userId': {
+                    'S': body['userId'],
+                },
+            },
+            ReturnValues='ALL_NEW',
+            # TableName=user_wallet_table,
+            UpdateExpression='SET #A = #A - :a',
+            ConditionExpression=Attr('amount').ge(0),
+        )
+        # ConditionalCheckFailed
+    except Exception as e:
+        print(e)
         return {
             'statusCode': 400,
             'body': json.dumps({'errorMessage': 'There was not enough money.'})
         }
 
-    user_wallet_table.update_item(
-        Key={
-            'userId': user_wallet['Item']['walletId']
-        },
-        AttributeUpdates={
-            'amount': {
-                'Value': total_amount,
-                'Action': 'PUT'
-            }
-        }
-    )
+    # total_amount = user_wallet['Item']['amount'] - body['useAmount']
+    # if total_amount < 0:
+    #     return {
+    #         'statusCode': 400,
+    #         'body': json.dumps({'errorMessage': 'There was not enough money.'})
+    #     }
+
+    # user_wallet_table.update_item(
+    #     Key={
+    #         'userId': user_wallet['Item']['walletId']
+    #     },
+    #     AttributeUpdates={
+    #         'amount': {
+    #             'Value': total_amount,
+    #             'Action': 'PUT'
+    #         }
+    #     }
+    # )
     history_table.put_item(
         Item={
-            'walletId': user_wallet['Item']['walletId'],
+            'walletId': usage_result['Item']['walletId'],
             'transactionId': body['transactionId'],
             'useAmount': body['useAmount'],
             'locationId': body['locationId'],
@@ -139,7 +167,7 @@ def wallet_use(event, context):
         'transactionId': body['transactionId'],
         'userId': body['userId'],
         'useAmount': body['useAmount'],
-        'totalAmount': int(total_amount)
+        'totalAmount': int(usage_result['Item']['amount'])
     })
 
     return {
