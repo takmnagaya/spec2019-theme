@@ -34,9 +34,7 @@ def wallet_charge(event, context):
                 '#A': 'amount',
             },
             ExpressionAttributeValues={
-                ':a': {
-                    'N': body['chargeAmount'],
-                },
+                {':a': body['chargeAmount']},
             },
             Key={
                 'userId': {
