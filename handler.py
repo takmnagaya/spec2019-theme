@@ -55,9 +55,8 @@ def wallet_charge(event, context):
     # user_wallet = result['Items'].pop()
     total_amount = user_wallet['Item']['amount'] + body['chargeAmount']
     user_wallet_table.update_item(
-        IndexName='walletIndex',
         Key={
-            'walletId': user_wallet['Item']['walletId']
+            'userId': user_wallet['Item']['walletId']
         },
         AttributeUpdates={
             'amount': {
@@ -115,9 +114,8 @@ def wallet_use(event, context):
         }
 
     user_wallet_table.update_item(
-        IndexName='walletIndex',
         Key={
-            'walletId': user_wallet['Item']['walletId']
+            'userId': user_wallet['Item']['walletId']
         },
         AttributeUpdates={
             'amount': {
@@ -190,9 +188,8 @@ def wallet_transfer(event, context):
         }
 
     user_wallet_table.update_item(
-        IndexName='walletIndex',
         Key={
-            'walletId': from_wallet['Item']['walletId']
+            'userId': from_wallet['Item']['walletId']
         },
         AttributeUpdates={
             'amount': {
@@ -202,9 +199,8 @@ def wallet_transfer(event, context):
         }
     )
     user_wallet_table.update_item(
-        IndexName='walletIndex',
         Key={
-            'walletId': to_wallet['Item']['walletId']
+            'userId': to_wallet['Item']['walletId']
         },
         AttributeUpdates={
             'amount': {
