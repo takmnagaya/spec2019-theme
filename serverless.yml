@@ -72,6 +72,13 @@ resources:
         KeySchema:
           - AttributeName: userId
             KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: walletIndex
+            KeySchema:
+              - AttributeName: walletId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
     PaymentHistoryTable:
       Type: AWS::DynamoDB::Table
       Properties:
