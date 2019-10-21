@@ -70,7 +70,7 @@ resources:
           - AttributeName: userId
             AttributeType: S
         KeySchema:
-          - AttributeName: id
+          - AttributeName: userId
             KeyType: HASH
         GlobalSecondaryIndexes:
           - IndexName: walletIndex
