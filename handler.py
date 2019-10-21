@@ -51,7 +51,7 @@ def wallet_charge_receiver(event, context):
     history_table = boto3.resource('dynamodb').Table(os.environ['PAYMENT_HISTORY_TABLE'])
 
     for record in event['Records']:
-        body = json.loads(record['body'])
+        body = json.loads(event['body'])
         user_wallet = user_wallet_table.update_item(
                 ExpressionAttributeNames={
                     '#A': 'amount',
@@ -102,7 +102,7 @@ def wallet_use_receiver(event, context):
     history_table = boto3.resource('dynamodb').Table(os.environ['PAYMENT_HISTORY_TABLE'])
 
     for record in event['Records']:
-        body = json.loads(record['body'])
+        body = json.loads(event['body'])
         try:
             usage_result = user_wallet_table.update_item(
                 ExpressionAttributeNames={
@@ -163,7 +163,7 @@ def wallet_transfer_receiver(event, context):
     history_table = boto3.resource('dynamodb').Table(os.environ['PAYMENT_HISTORY_TABLE'])
 
     for record in event['Records']:
-        body = json.loads(record['body'])
+        body = json.loads(event['body'])
         try:
             from_wallet = user_wallet_table.update_item(
                 ExpressionAttributeNames={
