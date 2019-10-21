@@ -8,22 +8,26 @@ import requests
 
 
 def user_create(event, context):
-    user_table = boto3.resource('dynamodb').Table(os.environ['USER_TABLE'])
-    wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
+    user_wallet_table = boto3.resource('dynamodb').Table(os.environ['USER_WALLET_TABLE'])
+    # user_table = boto3.resource('dynamodb').Table(os.environ['USER_TABLE'])
+    # wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
     body = json.loads(event['body'])
-    user_table.put_item(
+    user_wallet_table.put_item(
         Item={
-            'id': body['id'],
-            'name': body['name']
-        }
-    )
-    wallet_table.put_item(
-        Item={
-            'id': str(uuid.uuid4()),
             'userId': body['id'],
-            'amount': 0
+            'userName': body['name'],
+            'walletId': str(uuid.uuid4()),
+            # 'userId': body['id'],
+            'amount': 0,
         }
     )
+    # wallet_table.put_item(
+    #     Item={
+    #         'id': str(uuid.uuid4()),
+    #         'userId': body['id'],
+    #         'amount': 0
+    #     }
+    # )
     return {
         'statusCode': 200,
         'body': json.dumps({'result': 'ok'})
@@ -31,24 +35,28 @@ def user_create(event, context):
 
 
 def wallet_charge(event, context):
-    wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
+    user_wallet_table = boto3.resource('dynamodb').Table(os.environ['USER_WALLET_TABLE'])
+    # wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
     history_table = boto3.resource('dynamodb').Table(os.environ['PAYMENT_HISTORY_TABLE'])
     body = json.loads(event['body'])
-    result = wallet_table.scan(
-        ScanFilter={
-            'userId': {
-                'AttributeValueList': [
-                    body['userId']
-                ],
-                'ComparisonOperator': 'EQ'
-            }
-        }
+    user_wallet = user_wallet_table.get_item(
+        Key={'userId': body['userId']}
     )
-    user_wallet = result['Items'].pop()
+    # result = wallet_table.scan(
+    #     ScanFilter={
+    #         'userId': {
+    #             'AttributeValueList': [
+    #                 body['userId']
+    #             ],
+    #             'ComparisonOperator': 'EQ'
+    #         }
+    #     }
+    # )
+    # user_wallet = result['Items'].pop()
     total_amount = user_wallet['amount'] + body['chargeAmount']
-    wallet_table.update_item(
+    user_wallet_table.update_item(
         Key={
-            'id': user_wallet['id']
+            'walletId': user_wallet['walletId']
         },
         AttributeUpdates={
             'amount': {
@@ -59,7 +67,7 @@ def wallet_charge(event, context):
     )
     history_table.put_item(
         Item={
-            'walletId': user_wallet['id'],
+            'walletId': user_wallet['walletId'],
             'transactionId': body['transactionId'],
             'chargeAmount': body['chargeAmount'],
             'locationId': body['locationId'],
@@ -75,25 +83,29 @@ def wallet_charge(event, context):
 
     return {
         'statusCode': 202,
-        'body': json.dumps({'result': 'Assepted. Please wait for the notification.'})
+        'body': json.dumps({'result': 'Accepted. Please wait for the notification.'})
     }
 
 
 def wallet_use(event, context):
-    wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
+    user_wallet_table = boto3.resource('dynamodb').Table(os.environ['USER_WALLET_TABLE'])
+    # wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
     history_table = boto3.resource('dynamodb').Table(os.environ['PAYMENT_HISTORY_TABLE'])
     body = json.loads(event['body'])
-    result = wallet_table.scan(
-        ScanFilter={
-            'userId': {
-                'AttributeValueList': [
-                    body['userId']
-                ],
-                'ComparisonOperator': 'EQ'
-            }
-        }
+    user_wallet = user_wallet_table.get_item(
+        Key={'userId': body['userId']}
     )
-    user_wallet = result['Items'].pop()
+    # result = wallet_table.scan(
+    #     ScanFilter={
+    #         'userId': {
+    #             'AttributeValueList': [
+    #                 body['userId']
+    #             ],
+    #             'ComparisonOperator': 'EQ'
+    #         }
+    #     }
+    # )
+    # user_wallet = result['Items'].pop()
     total_amount = user_wallet['amount'] - body['useAmount']
     if total_amount < 0:
         return {
@@ -101,9 +113,9 @@ def wallet_use(event, context):
             'body': json.dumps({'errorMessage': 'There was not enough money.'})
         }
 
-    wallet_table.update_item(
+    user_wallet_table.update_item(
         Key={
-            'id': user_wallet['id']
+            'walletId': user_wallet['walletId']
         },
         AttributeUpdates={
             'amount': {
@@ -114,13 +126,14 @@ def wallet_use(event, context):
     )
     history_table.put_item(
         Item={
-            'walletId': user_wallet['id'],
+            'walletId': user_wallet['walletId'],
             'transactionId': body['transactionId'],
             'useAmount': body['useAmount'],
             'locationId': body['locationId'],
             'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
     )
+    # TODO: SQS
     requests.post(os.environ['NOTIFICATION_ENDPOINT'], json={
         'transactionId': body['transactionId'],
         'userId': body['userId'],
@@ -130,34 +143,41 @@ def wallet_use(event, context):
 
     return {
         'statusCode': 202,
-        'body': json.dumps({'result': 'Assepted. Please wait for the notification.'})
+        'body': json.dumps({'result': 'Accepted. Please wait for the notification.'})
     }
 
 
 def wallet_transfer(event, context):
-    wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
+    user_wallet_table = boto3.resource('dynamodb').Table(os.environ['USER_WALLET_TABLE'])
+    # wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
     history_table = boto3.resource('dynamodb').Table(os.environ['PAYMENT_HISTORY_TABLE'])
     body = json.loads(event['body'])
-    from_wallet = wallet_table.scan(
-        ScanFilter={
-            'userId': {
-                'AttributeValueList': [
-                    body['fromUserId']
-                ],
-                'ComparisonOperator': 'EQ'
-            }
-        }
-    ).get('Items').pop()
-    to_wallet = wallet_table.scan(
-        ScanFilter={
-            'userId': {
-                'AttributeValueList': [
-                    body['toUserId']
-                ],
-                'ComparisonOperator': 'EQ'
-            }
-        }
-    ).get('Items').pop()
+    from_wallet = user_wallet_table.get_item(
+        Key={'userId': body['fromUserId']}
+    )
+    # from_wallet = wallet_table.scan(
+    #     ScanFilter={
+    #         'userId': {
+    #             'AttributeValueList': [
+    #                 body['fromUserId']
+    #             ],
+    #             'ComparisonOperator': 'EQ'
+    #         }
+    #     }
+    # ).get('Items').pop()
+    # to_wallet = wallet_table.scan(
+    #     ScanFilter={
+    #         'userId': {
+    #             'AttributeValueList': [
+    #                 body['toUserId']
+    #             ],
+    #             'ComparisonOperator': 'EQ'
+    #         }
+    #     }
+    # ).get('Items').pop()
+    to_wallet = user_wallet_table.get_item(
+        Key={'userId': body['toUserId']}
+    )
 
     from_total_amount = from_wallet['amount'] - body['transferAmount']
     to_total_amount = from_wallet['amount'] + body['transferAmount']
@@ -167,9 +187,9 @@ def wallet_transfer(event, context):
             'body': json.dumps({'errorMessage': 'There was not enough money.'})
         }
 
-    wallet_table.update_item(
+    user_wallet_table.update_item(
         Key={
-            'id': from_wallet['id']
+            'walletId': from_wallet['walletId']
         },
         AttributeUpdates={
             'amount': {
@@ -178,9 +198,9 @@ def wallet_transfer(event, context):
             }
         }
     )
-    wallet_table.update_item(
+    user_wallet_table.update_item(
         Key={
-            'id': to_wallet['id']
+            'walletId': to_wallet['walletId']
         },
         AttributeUpdates={
             'amount': {
@@ -191,7 +211,7 @@ def wallet_transfer(event, context):
     )
     history_table.put_item(
         Item={
-            'walletId': from_wallet['id'],
+            'walletId': from_wallet['walletId'],
             'transactionId': body['transactionId'],
             'useAmount': body['transferAmount'],
             'locationId': body['locationId'],
@@ -200,7 +220,7 @@ def wallet_transfer(event, context):
     )
     history_table.put_item(
         Item={
-            'walletId': from_wallet['id'],
+            'walletId': from_wallet['walletId'],
             'transactionId': body['transactionId'],
             'chargeAmount': body['transferAmount'],
             'locationId': body['locationId'],
@@ -224,33 +244,34 @@ def wallet_transfer(event, context):
 
     return {
         'statusCode': 202,
-        'body': json.dumps({'result': 'Assepted. Please wait for the notification.'})
+        'body': json.dumps({'result': 'Accepted. Please wait for the notification.'})
     }
 
 
 def get_user_summary(event, context):
-    wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
-    user_table = boto3.resource('dynamodb').Table(os.environ['USER_TABLE'])
+    user_wallet_table = boto3.resource('dynamodb').Table(os.environ['USER_WALLET_TABLE'])
+    # wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
+    # user_table = boto3.resource('dynamodb').Table(os.environ['USER_TABLE'])
     history_table = boto3.resource('dynamodb').Table(os.environ['PAYMENT_HISTORY_TABLE'])
     params = event['pathParameters']
-    user = user_table.get_item(
-        Key={'id': params['userId']}
+    user_wallet = user_wallet_table.get_item(
+        Key={'userId': params['userId']}
     )
-    wallet = wallet_table.scan(
-        ScanFilter={
-            'userId': {
-                'AttributeValueList': [
-                    params['userId']
-                ],
-                'ComparisonOperator': 'EQ'
-            }
-        }
-    ).get('Items').pop()
+    # wallet = wallet_table.scan(
+    #     ScanFilter={
+    #         'userId': {
+    #             'AttributeValueList': [
+    #                 params['userId']
+    #             ],
+    #             'ComparisonOperator': 'EQ'
+    #         }
+    #     }
+    # ).get('Items').pop()
     payment_history = history_table.scan(
         ScanFilter={
             'walletId': {
                 'AttributeValueList': [
-                    wallet['id']
+                    user_wallet['walletId']
                 ],
                 'ComparisonOperator': 'EQ'
             }
@@ -271,8 +292,9 @@ def get_user_summary(event, context):
     return {
         'statusCode': 200,
         'body': json.dumps({
-            'userName': user['Item']['name'],
-            'currentAmount': int(wallet['amount']),
+            # 'userName': user['Item']['name'],
+            'userName': user_wallet['userName'],
+            'currentAmount': int(user_wallet['amount']),
             'totalChargeAmount': int(sum_charge),
             'totalUseAmount': int(sum_payment),
             'timesPerLocation': times_per_location
@@ -281,24 +303,28 @@ def get_user_summary(event, context):
 
 
 def get_payment_history(event, context):
-    wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
+    user_wallet_table = boto3.resource('dynamodb').Table(os.environ['USER_WALLET_TABLE'])
+    # wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
     history_table = boto3.resource('dynamodb').Table(os.environ['PAYMENT_HISTORY_TABLE'])
     params = event['pathParameters']
-    wallet = wallet_table.scan(
-        ScanFilter={
-            'userId': {
-                'AttributeValueList': [
-                    params['userId']
-                ],
-                'ComparisonOperator': 'EQ'
-            }
-        }
-    ).get('Items').pop()
+    # wallet = wallet_table.scan(
+    #     ScanFilter={
+    #         'userId': {
+    #             'AttributeValueList': [
+    #                 params['userId']
+    #             ],
+    #             'ComparisonOperator': 'EQ'
+    #         }
+    #     }
+    # ).get('Items').pop()
+    user_wallet = user_wallet_table.get_item(
+        Key={'userId': params['userId']}
+    )
     payment_history_result = history_table.scan(
         ScanFilter={
             'walletId': {
                 'AttributeValueList': [
-                    wallet['id']
+                    user_wallet['walletId']
                 ],
                 'ComparisonOperator': 'EQ'
             }
