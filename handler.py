@@ -83,7 +83,7 @@ def wallet_use(event, context):
             },
             ReturnValues='ALL_NEW',
             UpdateExpression='SET #A = #A - :a',
-            ConditionExpression=Attr('amount').ge(0),
+            ConditionExpression=Attr('amount').gte(0),
         )
         # ConditionalCheckFailed
     except Exception as e:
@@ -134,7 +134,7 @@ def wallet_transfer(event, context):
             },
             ReturnValues='ALL_NEW',
             UpdateExpression='SET #A = #A - :a',
-            ConditionExpression=Attr('amount').ge(0),
+            ConditionExpression=Attr('amount').gte(0),
         )
         # ConditionalCheckFailed
     except Exception as e:
