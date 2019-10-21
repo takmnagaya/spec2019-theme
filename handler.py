@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 import boto3
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr, Key
 import requests
 
 
@@ -153,9 +153,9 @@ def wallet_transfer(event, context):
     # wallet_table = boto3.resource('dynamodb').Table(os.environ['WALLET_TABLE'])
     history_table = boto3.resource('dynamodb').Table(os.environ['PAYMENT_HISTORY_TABLE'])
     body = json.loads(event['body'])
-    from_wallet = user_wallet_table.get_item(
-        Key={'userId': body['fromUserId']}
-    )
+    # from_wallet = user_wallet_table.get_item(
+    #     Key={'userId': body['fromUserId']}
+    # )
     # from_wallet = wallet_table.scan(
     #     ScanFilter={
     #         'userId': {
@@ -176,40 +176,90 @@ def wallet_transfer(event, context):
     #         }
     #     }
     # ).get('Items').pop()
-    to_wallet = user_wallet_table.get_item(
-        Key={'userId': body['toUserId']}
-    )
 
-    from_total_amount = from_wallet['Item']['amount'] - body['transferAmount']
-    to_total_amount = from_wallet['Item']['amount'] + body['transferAmount']
-    if from_total_amount < 0:
+
+
+    try:
+        from_wallet = user_wallet_table.update_item(
+            ExpressionAttributeNames={
+                '#A': 'amount',
+            },
+            ExpressionAttributeValues={
+                ':a': {
+                    'N': body['transferAmount'],
+                },
+            },
+            Key={
+                'userId': {
+                    'S': body['fromUserId'],
+                },
+            },
+            ReturnValues='ALL_NEW',
+            # TableName=user_wallet_table,
+            UpdateExpression='SET #A = #A - :a',
+            ConditionExpression=Attr('amount').ge(0),
+        )
+        # ConditionalCheckFailed
+    except Exception:
         return {
             'statusCode': 400,
             'body': json.dumps({'errorMessage': 'There was not enough money.'})
         }
 
-    user_wallet_table.update_item(
-        Key={
-            'userId': from_wallet['Item']['walletId']
+    to_wallet = user_wallet_table.update_item(
+        ExpressionAttributeNames={
+            '#A': 'amount',
         },
-        AttributeUpdates={
-            'amount': {
-                'Value': from_total_amount,
-                'Action': 'PUT'
-            }
-        }
-    )
-    user_wallet_table.update_item(
-        Key={
-            'userId': to_wallet['Item']['walletId']
+        ExpressionAttributeValues={
+            ':a': {
+                'N': body['transferAmount'],
+            },
         },
-        AttributeUpdates={
-            'amount': {
-                'Value': to_total_amount,
-                'Action': 'PUT'
-            }
-        }
+        Key={
+            'userId': {
+                'S': body['toUserId'],
+            },
+        },
+        ReturnValues='ALL_NEW',
+        # TableName=user_wallet_table,
+        UpdateExpression='SET #A = #A + :a',
     )
+
+
+    # to_wallet = user_wallet_table.get_item(
+    #     Key={'userId': body['toUserId']}
+    # )
+
+    # from_total_amount = from_wallet['Item']['amount'] - body['transferAmount']
+    # to_total_amount = from_wallet['Item']['amount'] + body['transferAmount']
+    # if from_total_amount < 0:
+    #     return {
+    #         'statusCode': 400,
+    #         'body': json.dumps({'errorMessage': 'There was not enough money.'})
+    #     }
+
+    # user_wallet_table.update_item(
+    #     Key={
+    #         'userId': from_wallet['Item']['walletId']
+    #     },
+    #     AttributeUpdates={
+    #         'amount': {
+    #             'Value': from_total_amount,
+    #             'Action': 'PUT'
+    #         }
+    #     }
+    # )
+    # user_wallet_table.update_item(
+    #     Key={
+    #         'userId': to_wallet['Item']['walletId']
+    #     },
+    #     AttributeUpdates={
+    #         'amount': {
+    #             'Value': to_total_amount,
+    #             'Action': 'PUT'
+    #         }
+    #     }
+    # )
     history_table.put_item(
         Item={
             'walletId': from_wallet['Item']['walletId'],
@@ -232,14 +282,14 @@ def wallet_transfer(event, context):
         'transactionId': body['transactionId'],
         'userId': body['fromUserId'],
         'useAmount': body['transferAmount'],
-        'totalAmount': int(from_total_amount),
+        'totalAmount': int(from_wallet['Item']['amount']),
         'transferTo': body['toUserId']
     })
     requests.post(os.environ['NOTIFICATION_ENDPOINT'], json={
         'transactionId': body['transactionId'],
         'userId': body['toUserId'],
         'chargeAmount': body['transferAmount'],
-        'totalAmount': int(to_total_amount),
+        'totalAmount': int(to_wallet['Item']['amount']),
         'transferFrom': body['fromUserId']
     })
 
