@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 
 import boto3
+from boto3.dynamodb.conditions import Key
 import requests
 
 
@@ -267,16 +268,19 @@ def get_user_summary(event, context):
     #         }
     #     }
     # ).get('Items').pop()
-    payment_history = history_table.scan(
-        ScanFilter={
-            'walletId': {
-                'AttributeValueList': [
-                    user_wallet['Item']['walletId']
-                ],
-                'ComparisonOperator': 'EQ'
-            }
-        }
+    payment_history = history_table.query(
+        KeyConditionExpression=Key('userId').eq(params['userId'])
     )
+    # payment_history = history_table.scan(
+    #     ScanFilter={
+    #         'walletId': {
+    #             'AttributeValueList': [
+    #                 user_wallet['Item']['walletId']
+    #             ],
+    #             'ComparisonOperator': 'EQ'
+    #         }
+    #     }
+    # )
     sum_charge = 0
     sum_payment = 0
     times_per_location = {}
@@ -317,19 +321,22 @@ def get_payment_history(event, context):
     #         }
     #     }
     # ).get('Items').pop()
-    user_wallet = user_wallet_table.get_item(
-        Key={'userId': params['userId']}
+    # user_wallet = user_wallet_table.get_item(
+    #     Key={'userId': params['userId']}
+    # )
+    payment_history_result = history_table.query(
+        KeyConditionExpression=Key('userId').eq(params['userId'])
     )
-    payment_history_result = history_table.scan(
-        ScanFilter={
-            'walletId': {
-                'AttributeValueList': [
-                    user_wallet['Item']['walletId']
-                ],
-                'ComparisonOperator': 'EQ'
-            }
-        }
-    )
+    # payment_history_result = history_table.scan(
+    #     ScanFilter={
+    #         'walletId': {
+    #             'AttributeValueList': [
+    #                 user_wallet['Item']['walletId']
+    #             ],
+    #             'ComparisonOperator': 'EQ'
+    #         }
+    #     }
+    # )
 
     payment_history = []
     for p in payment_history_result['Items']:
